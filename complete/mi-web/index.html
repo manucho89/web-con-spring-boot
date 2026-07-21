@@ -2,17 +2,88 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Mi Frontend</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi primera aplicación con Spring Boot</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 60px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,.15);
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #555;
+        }
+
+        button {
+            margin-top: 25px;
+            padding: 14px 28px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            background: #1976d2;
+            color: white;
+            cursor: pointer;
+            transition: .3s;
+        }
+
+        button:hover {
+            background: #0d47a1;
+        }
+
+        #resultado {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background: #e8f5e9;
+            border: 1px solid #81c784;
+            text-align: left;
+            font-size: 18px;
+            min-height: 80px;
+        }
+
+        strong {
+            color: #1b5e20;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>Mi Frontend</h1>
+<div class="container">
 
-<button id="btn">
-    Consultar API
-</button>
+    <h1>Spring Boot + JavaScript</h1>
 
-<pre id="resultado"></pre>
+    <p>
+        Esta página consulta una API desarrollada con Spring Boot.
+    </p>
+
+    <button id="consultarApi">
+        Consultar API
+    </button>
+
+    <div id="resultado">
+        Pulsa el botón para consultar la API.
+    </div>
+
+</div>
 
 <script src="app.js"></script>
 
