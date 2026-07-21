@@ -1,0 +1,10 @@
+:spring_boot_version: current
+:terminal here
+     ./gradlew boot<run
+
+
+
+
+    then
+      cd mi-web
+        python3 -m http.server 5500
