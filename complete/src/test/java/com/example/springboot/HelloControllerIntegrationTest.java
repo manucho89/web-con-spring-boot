@@ -1,7 +1,6 @@
 package com.example.springboot;
 
 import org.junit.jupiter.api.Test;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,13 +10,18 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 public class HelloControllerIntegrationTest {
 
-  @Autowired
-  private RestTestClient client;
+    @Autowired
+    private RestTestClient client;
 
-  @Test
-  public void getHello() {
-    client.get().uri("/").exchangeSuccessfully()
-        .expectBody(String.class)
-        .isEqualTo("Greetings from Spring Boot!");
-  }
+    @Test
+    public void getHello() {
+        client.get()
+                .uri("/")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.mensaje").isEqualTo("Hola desde Spring Boot")
+                .jsonPath("$.version").isEqualTo("0.2")
+                .jsonPath("$.estado").isEqualTo("OK");
+    }
 }

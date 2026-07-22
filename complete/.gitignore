@@ -1,6 +1,11 @@
 # IntelliJ IDEA
 .idea/
 *.iml
+/build/
+/.gradle/
+/.idea/
+.vscode/
+data/
 
 # Gradle
 .gradle/
