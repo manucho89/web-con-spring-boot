@@ -2,90 +2,132 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi primera aplicación con Spring Boot</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 0;
-        }
+    <title>Gestión de Usuarios</title>
 
-        .container {
-            max-width: 700px;
-            margin: 60px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,.15);
-            text-align: center;
-        }
-
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-
-        p {
-            color: #555;
-        }
-
-        button {
-            margin-top: 25px;
-            padding: 14px 28px;
-            font-size: 18px;
-            border: none;
-            border-radius: 8px;
-            background: #1976d2;
-            color: white;
-            cursor: pointer;
-            transition: .3s;
-        }
-
-        button:hover {
-            background: #0d47a1;
-        }
-
-        #resultado {
-            margin-top: 30px;
-            padding: 20px;
-            border-radius: 8px;
-            background: #e8f5e9;
-            border: 1px solid #81c784;
-            text-align: left;
-            font-size: 18px;
-            min-height: 80px;
-        }
-
-        strong {
-            color: #1b5e20;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<div class="container">
+    <main class="contenedor">
 
-    <h1>Spring Boot + JavaScript</h1>
+        <header class="cabecera">
+            <p class="version">Spring Boot CRUD · v0.4.2</p>
 
-    <p>
-        Esta página consulta una API desarrollada con Spring Boot.
-    </p>
+            <h1>Gestión de Usuarios</h1>
 
-    <button id="consultarApi">
-        Consultar API
-    </button>
+            <p class="subtitulo">
+                Frontend conectado con la API de Spring Boot
+            </p>
+        </header>
 
-    <div id="resultado">
-        Pulsa el botón para consultar la API.
-    </div>
+        <section class="tarjeta">
 
-</div>
+            <h2>Nuevo usuario</h2>
 
-<script src="app.js"></script>
+            <form id="formulario-usuario">
+
+                <div class="campo">
+                    <label for="nombre">Nombre</label>
+
+                    <input
+                        id="nombre"
+                        name="nombre"
+                        type="text"
+                        placeholder="Escribe el nombre"
+                        required
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="email">Correo electrónico</label>
+
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="usuario@ejemplo.com"
+                        required
+                    >
+                </div>
+
+                <button
+                    id="boton-guardar"
+                    type="submit"
+                >
+                    Guardar usuario
+                </button>
+
+                <p
+                    id="mensaje-formulario"
+                    class="mensaje-formulario"
+                ></p>
+
+            </form>
+
+        </section>
+
+        <section class="tarjeta">
+
+            <div class="cabecera-tabla">
+
+                <div>
+                    <h2>Usuarios registrados</h2>
+
+                    <p id="contador-usuarios">
+                        Cargando usuarios...
+                    </p>
+                </div>
+
+                <button
+                    id="boton-recargar"
+                    type="button"
+                >
+                    Recargar
+                </button>
+
+            </div>
+
+            <div class="contenedor-tabla">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tabla-usuarios">
+
+                        <tr>
+                            <td
+                                colspan="4"
+                                class="estado-tabla"
+                            >
+                                Cargando usuarios...
+                            </td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
 
 </body>
 </html>
