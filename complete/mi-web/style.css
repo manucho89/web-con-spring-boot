@@ -76,16 +76,19 @@ form {
     color: #344054;
 }
 
-.campo input {
+.campo input,
+.campo-edicion {
     width: 100%;
     padding: 12px 14px;
     border: 1px solid #cfd4dc;
     border-radius: 10px;
     outline: none;
     background: white;
+    color: #1f2937;
 }
 
-.campo input:focus {
+.campo input:focus,
+.campo-edicion:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
@@ -98,10 +101,18 @@ button {
     color: white;
     font-weight: bold;
     cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        opacity 0.2s ease;
 }
 
 button:hover {
     background: #1d4ed8;
+}
+
+button:active:not(:disabled) {
+    transform: translateY(1px);
 }
 
 button:disabled {
@@ -118,21 +129,25 @@ button:disabled {
     background: #dfe7ff;
 }
 
-.mensaje {
+.mensaje,
+.mensaje-formulario {
     min-height: 24px;
     margin: 16px 0 0;
     font-weight: bold;
 }
 
-.mensaje.exito {
+.mensaje.exito,
+.mensaje-exito {
     color: #067647;
 }
 
-.mensaje.error {
+.mensaje.error,
+.mensaje-error {
     color: #b42318;
 }
 
-.encabezado-tabla {
+.encabezado-tabla,
+.cabecera-tabla {
     display: flex;
     justify-content: space-between;
     gap: 20px;
@@ -140,16 +155,19 @@ button:disabled {
     margin-bottom: 18px;
 }
 
-.encabezado-tabla h2 {
+.encabezado-tabla h2,
+.cabecera-tabla h2 {
     margin-bottom: 6px;
 }
 
-.encabezado-tabla p {
+.encabezado-tabla p,
+.cabecera-tabla p {
     margin: 0;
     color: #667085;
 }
 
-.tabla-contenedor {
+.tabla-contenedor,
+.contenedor-tabla {
     overflow-x: auto;
 }
 
@@ -163,6 +181,7 @@ td {
     padding: 15px 12px;
     text-align: left;
     border-bottom: 1px solid #eaecf0;
+    vertical-align: middle;
 }
 
 th {
@@ -171,8 +190,17 @@ th {
     font-size: 0.9rem;
 }
 
+tbody tr {
+    transition: background 0.2s ease;
+}
+
 tbody tr:hover {
     background: #f9fafb;
+}
+
+.fila-en-edicion,
+.fila-en-edicion:hover {
+    background: #fffaeb;
 }
 
 .estado-tabla {
@@ -183,11 +211,19 @@ tbody tr:hover {
 
 .acciones {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
-.boton-editar {
+.boton-editar,
+.boton-eliminar,
+.boton-guardar-cambios,
+.boton-cancelar {
     padding: 8px 12px;
+    white-space: nowrap;
+}
+
+.boton-editar {
     background: #f79009;
 }
 
@@ -196,12 +232,32 @@ tbody tr:hover {
 }
 
 .boton-eliminar {
-    padding: 8px 12px;
     background: #d92d20;
 }
 
 .boton-eliminar:hover {
     background: #b42318;
+}
+
+.boton-guardar-cambios {
+    background: #079455;
+}
+
+.boton-guardar-cambios:hover {
+    background: #067647;
+}
+
+.boton-cancelar {
+    background: #667085;
+}
+
+.boton-cancelar:hover {
+    background: #475467;
+}
+
+.campo-edicion {
+    min-width: 190px;
+    padding: 9px 11px;
 }
 
 @media (max-width: 800px) {
@@ -217,12 +273,22 @@ tbody tr:hover {
         grid-template-columns: 1fr;
     }
 
-    .encabezado-tabla {
+    .encabezado-tabla,
+    .cabecera-tabla {
         align-items: stretch;
         flex-direction: column;
     }
 
     .boton-secundario {
         width: 100%;
+    }
+
+    th,
+    td {
+        padding: 12px 10px;
+    }
+
+    .acciones {
+        min-width: 180px;
     }
 }
