@@ -292,3 +292,5 @@ tbody tr:hover {
         min-width: 180px;
     }
 }
+
+.campo-busqueda{margin:0 0 18px}.campo-busqueda label{display:block;font-weight:bold;margin-bottom:8px}.campo-busqueda input{width:100%;padding:12px 14px;border:1px solid #cfd4dc;border-radius:10px}

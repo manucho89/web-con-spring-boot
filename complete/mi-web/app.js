@@ -11,6 +11,7 @@ const botonGuardar = document.getElementById("boton-guardar");
 const mensajeFormulario = document.getElementById("mensaje-formulario");
 
 let idUsuarioEnEdicion = null;
+let todosLosUsuarios=[];
 
 async function cargarUsuarios() {
     mostrarEstadoTabla("Cargando usuarios...");
@@ -29,7 +30,8 @@ async function cargarUsuarios() {
         const usuarios = await respuesta.json();
 
         idUsuarioEnEdicion = null;
-        mostrarUsuarios(usuarios);
+        todosLosUsuarios=usuarios;
+        aplicarFiltro();
     } catch (error) {
         console.error("Error al cargar usuarios:", error);
 
@@ -289,11 +291,13 @@ async function actualizarUsuario(
     }
 }
 
-function mostrarUsuarios(usuarios) {
+function aplicarFiltro(){const b=document.getElementById('buscar');const t=(b?.value||'').toLowerCase();const f=todosLosUsuarios.filter(u=>(u.nombre||'').toLowerCase().includes(t)||(u.email||'').toLowerCase().includes(t));mostrarUsuarios(f,todosLosUsuarios.length);}
+
+function mostrarUsuarios(usuarios,total=todosLosUsuarios.length){
     tablaUsuarios.innerHTML = "";
 
     if (usuarios.length === 0) {
-        mostrarEstadoTabla("Todavía no hay usuarios registrados.");
+        mostrarEstadoTabla(total===0?"Todavía no hay usuarios registrados.":"No se encontraron usuarios.");
         contadorUsuarios.textContent = "0 usuarios";
         return;
     }
@@ -346,8 +350,8 @@ function mostrarUsuarios(usuarios) {
 
     contadorUsuarios.textContent =
         usuarios.length === 1
-            ? "1 usuario"
-            : `${usuarios.length} usuarios`;
+            ? `1 de ${total} usuario`
+            : `${usuarios.length} de ${total} usuarios`;
 }
 
 function mostrarEstadoTabla(mensaje) {
@@ -379,5 +383,10 @@ function escaparHTML(texto) {
 
 botonRecargar.addEventListener("click", cargarUsuarios);
 formularioUsuario.addEventListener("submit", guardarUsuario);
+
+const cajaBusqueda = document.getElementById("buscar");
+if (cajaBusqueda) {
+    cajaBusqueda.addEventListener("input", aplicarFiltro);
+}
 
 cargarUsuarios();
