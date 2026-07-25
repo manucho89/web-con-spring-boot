@@ -1,45 +1,53 @@
-const API_URL = "http://localhost:8080/usuarios";
+"use strict";
 
-const tablaUsuarios = document.getElementById("tabla-usuarios");
-const contadorUsuarios = document.getElementById("contador-usuarios");
-const botonRecargar = document.getElementById("boton-recargar");
+const API_HOST = window.location.hostname || "192.168.1.156";
+const API_URL = `http://${API_HOST}:8080/usuarios`;
 
 const formularioUsuario = document.getElementById("formulario-usuario");
 const campoNombre = document.getElementById("nombre");
 const campoEmail = document.getElementById("email");
 const botonGuardar = document.getElementById("boton-guardar");
 const mensajeFormulario = document.getElementById("mensaje-formulario");
+const contadorUsuarios = document.getElementById("contador-usuarios");
+const botonRecargar = document.getElementById("boton-recargar");
+const cajaBusqueda = document.getElementById("buscar");
+const estadoApiTexto = document.getElementById("estado-api-texto");
 
+let todosLosUsuarios = [];
 let idUsuarioEnEdicion = null;
-let todosLosUsuarios=[];
+
+const contenedorUsuarios = document.getElementById("lista-usuarios");
+
+if (!contenedorUsuarios) {
+    throw new Error("No se encontró el contenedor #lista-usuarios en index.html");
+}
 
 async function cargarUsuarios() {
-    mostrarEstadoTabla("Cargando usuarios...");
+    mostrarEstado("Cargando usuarios...");
     contadorUsuarios.textContent = "Cargando usuarios...";
     botonRecargar.disabled = true;
 
     try {
-        const respuesta = await fetch(API_URL);
+        const respuesta = await fetch(API_URL, {
+            headers: { Accept: "application/json" }
+        });
 
         if (!respuesta.ok) {
-            throw new Error(
-                `El servidor respondió con el código ${respuesta.status}`
-            );
+            throw new Error(`El servidor respondió con el código ${respuesta.status}`);
         }
 
-        const usuarios = await respuesta.json();
-
+        const datos = await respuesta.json();
+        todosLosUsuarios = Array.isArray(datos) ? datos : [];
+        if (estadoApiTexto) estadoApiTexto.textContent = `API conectada: ${API_URL}`;
         idUsuarioEnEdicion = null;
-        todosLosUsuarios=usuarios;
         aplicarFiltro();
     } catch (error) {
         console.error("Error al cargar usuarios:", error);
-
-        mostrarEstadoTabla(
+        mostrarEstado(
             "No se pudieron cargar los usuarios. Comprueba que Spring Boot está funcionando."
         );
-
         contadorUsuarios.textContent = "Error de conexión";
+        if (estadoApiTexto) estadoApiTexto.textContent = `API sin conexión: ${API_URL}`;
     } finally {
         botonRecargar.disabled = false;
     }
@@ -51,99 +59,113 @@ async function guardarUsuario(evento) {
     const nombre = campoNombre.value.trim();
     const email = campoEmail.value.trim();
 
-    if (!nombre || !email) {
-        mostrarMensajeFormulario(
-            "Completa el nombre y el correo electrónico.",
-            true
-        );
+    if (!validarDatos(nombre, email)) {
         return;
     }
 
-    if (!emailValido(email)) {
-        mostrarMensajeFormulario(
-            "Introduce un correo electrónico válido.",
-            true
-        );
-        return;
-    }
-
-    botonGuardar.disabled = true;
-    botonGuardar.textContent = "Guardando...";
-
+    cambiarEstadoBoton(botonGuardar, true, "Guardando...");
     mostrarMensajeFormulario("Guardando usuario...", false);
 
     try {
-        const respuesta = await fetch(API_URL, {
+        await solicitar(API_URL, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nombre, email })
         });
-
-        if (!respuesta.ok) {
-            throw new Error(
-                `El servidor respondió con el código ${respuesta.status}`
-            );
-        }
 
         formularioUsuario.reset();
         mostrarMensajeFormulario("Usuario guardado correctamente.", false);
         await cargarUsuarios();
+        campoNombre.focus();
     } catch (error) {
         console.error("Error al guardar usuario:", error);
         mostrarMensajeFormulario("No se pudo guardar el usuario.", true);
     } finally {
-        botonGuardar.disabled = false;
-        botonGuardar.textContent = "Guardar usuario";
+        cambiarEstadoBoton(botonGuardar, false, "Guardar usuario");
     }
 }
 
-async function eliminarUsuario(usuario, botonEliminar) {
-    const confirmacion = window.confirm(
-        `¿Seguro que deseas eliminar al usuario "${usuario.nombre}"?`
-    );
+function aplicarFiltro() {
+    const texto = normalizar(cajaBusqueda?.value);
 
-    if (!confirmacion) {
+    const usuariosFiltrados = todosLosUsuarios.filter((usuario) => {
+        return normalizar(usuario.nombre).includes(texto)
+            || normalizar(usuario.email).includes(texto)
+            || String(usuario.id ?? "").includes(texto);
+    });
+
+    mostrarUsuarios(usuariosFiltrados, todosLosUsuarios.length, texto !== "");
+}
+
+function mostrarUsuarios(usuarios, total, filtroActivo) {
+    contenedorUsuarios.replaceChildren();
+
+    if (usuarios.length === 0) {
+        mostrarEstado(
+            total === 0
+                ? "Todavía no hay usuarios registrados."
+                : "No se encontraron usuarios con esa búsqueda."
+        );
+        contadorUsuarios.textContent = total === 0 ? "0 usuarios" : `0 de ${total} usuarios`;
         return;
     }
 
-    botonEliminar.disabled = true;
-    botonEliminar.textContent = "Eliminando...";
+    const fragmento = document.createDocumentFragment();
 
-    mostrarMensajeFormulario(`Eliminando a ${usuario.nombre}...`, false);
+    usuarios.forEach((usuario) => {
+        fragmento.appendChild(crearTarjetaUsuario(usuario));
+    });
 
-    try {
-        const respuesta = await fetch(`${API_URL}/${usuario.id}`, {
-            method: "DELETE"
-        });
+    contenedorUsuarios.appendChild(fragmento);
 
-        if (!respuesta.ok) {
-            throw new Error(
-                `El servidor respondió con el código ${respuesta.status}`
-            );
-        }
-
-        mostrarMensajeFormulario(
-            `Usuario "${usuario.nombre}" eliminado correctamente.`,
-            false
-        );
-
-        await cargarUsuarios();
-    } catch (error) {
-        console.error("Error al eliminar usuario:", error);
-
-        mostrarMensajeFormulario(
-            `No se pudo eliminar al usuario "${usuario.nombre}".`,
-            true
-        );
-
-        botonEliminar.disabled = false;
-        botonEliminar.textContent = "Eliminar";
+    if (filtroActivo) {
+        contadorUsuarios.textContent = `${usuarios.length} de ${total} ${pluralizar(total, "usuario", "usuarios")}`;
+    } else {
+        contadorUsuarios.textContent = `${total} ${pluralizar(total, "usuario", "usuarios")}`;
     }
 }
 
-function activarEdicion(usuario, fila) {
+function crearTarjetaUsuario(usuario) {
+    const tarjeta = document.createElement("article");
+    tarjeta.className = "usuario-card";
+    tarjeta.dataset.usuarioId = String(usuario.id ?? "");
+
+    const cabecera = document.createElement("div");
+    cabecera.className = "usuario-card__cabecera";
+
+    const titulo = document.createElement("h3");
+    titulo.className = "usuario-card__nombre";
+    titulo.textContent = usuario.nombre || "Sin nombre";
+
+    const identificador = document.createElement("span");
+    identificador.className = "usuario-card__id";
+    identificador.textContent = `ID: ${usuario.id ?? "—"}`;
+
+    cabecera.append(titulo, identificador);
+
+    const email = document.createElement("a");
+    email.className = "usuario-card__email";
+    email.textContent = usuario.email || "Sin correo electrónico";
+    if (usuario.email) {
+        email.href = `mailto:${usuario.email}`;
+    }
+
+    const acciones = document.createElement("div");
+    acciones.className = "acciones usuario-card__acciones";
+
+    const botonEditar = crearBoton("Editar", "boton-editar");
+    const botonEliminar = crearBoton("Eliminar", "boton-eliminar");
+
+    botonEditar.addEventListener("click", () => activarEdicion(usuario, tarjeta));
+    botonEliminar.addEventListener("click", () => eliminarUsuario(usuario, botonEliminar));
+
+    acciones.append(botonEditar, botonEliminar);
+    tarjeta.append(cabecera, email, acciones);
+
+    return tarjeta;
+}
+
+function activarEdicion(usuario, tarjeta) {
     if (idUsuarioEnEdicion !== null && idUsuarioEnEdicion !== usuario.id) {
         mostrarMensajeFormulario(
             "Guarda o cancela la edición actual antes de editar otro usuario.",
@@ -153,56 +175,34 @@ function activarEdicion(usuario, fila) {
     }
 
     idUsuarioEnEdicion = usuario.id;
-    fila.classList.add("fila-en-edicion");
+    tarjeta.classList.add("usuario-card--edicion");
+    tarjeta.replaceChildren();
 
-    const celdaNombre = fila.children[1];
-    const celdaEmail = fila.children[2];
-    const celdaAcciones = fila.children[3];
+    const campoNombreEdicion = crearCampoEdicion(
+        "Nombre",
+        "text",
+        usuario.nombre ?? "",
+        "Nombre del usuario"
+    );
 
-    celdaNombre.innerHTML = "";
-    celdaEmail.innerHTML = "";
-    celdaAcciones.innerHTML = "";
+    const campoEmailEdicion = crearCampoEdicion(
+        "Correo electrónico",
+        "email",
+        usuario.email ?? "",
+        "Correo electrónico"
+    );
 
-    const inputNombre = document.createElement("input");
-    inputNombre.type = "text";
-    inputNombre.value = usuario.nombre ?? "";
-    inputNombre.className = "campo-edicion";
+    const acciones = document.createElement("div");
+    acciones.className = "acciones usuario-card__acciones";
 
-    const inputEmail = document.createElement("input");
-    inputEmail.type = "email";
-    inputEmail.value = usuario.email ?? "";
-    inputEmail.className = "campo-edicion";
-
-    const contenedorAcciones = document.createElement("div");
-    contenedorAcciones.className = "acciones";
-
-    const botonGuardarCambios = document.createElement("button");
-    botonGuardarCambios.type = "button";
-    botonGuardarCambios.className = "boton-editar boton-guardar-cambios";
-    botonGuardarCambios.textContent = "Guardar";
-
-    const botonCancelar = document.createElement("button");
-    botonCancelar.type = "button";
-    botonCancelar.className = "boton-cancelar";
-    botonCancelar.textContent = "Cancelar";
+    const botonGuardarCambios = crearBoton("Guardar", "boton-guardar-cambios");
+    const botonCancelar = crearBoton("Cancelar", "boton-cancelar");
 
     const guardar = async () => {
-        const nombre = inputNombre.value.trim();
-        const email = inputEmail.value.trim();
+        const nombre = campoNombreEdicion.input.value.trim();
+        const email = campoEmailEdicion.input.value.trim();
 
-        if (!nombre || !email) {
-            mostrarMensajeFormulario(
-                "Completa el nombre y el correo electrónico.",
-                true
-            );
-            return;
-        }
-
-        if (!emailValido(email)) {
-            mostrarMensajeFormulario(
-                "Introduce un correo electrónico válido.",
-                true
-            );
+        if (!validarDatos(nombre, email)) {
             return;
         }
 
@@ -216,67 +216,44 @@ function activarEdicion(usuario, fila) {
     };
 
     botonGuardarCambios.addEventListener("click", guardar);
+    botonCancelar.addEventListener("click", cancelarEdicion);
 
-    botonCancelar.addEventListener("click", () => {
-        idUsuarioEnEdicion = null;
-        cargarUsuarios();
-        mostrarMensajeFormulario("Edición cancelada.", false);
+    [campoNombreEdicion.input, campoEmailEdicion.input].forEach((input) => {
+        input.addEventListener("keydown", (evento) => {
+            if (evento.key === "Enter") {
+                evento.preventDefault();
+                guardar();
+            } else if (evento.key === "Escape") {
+                evento.preventDefault();
+                cancelarEdicion();
+            }
+        });
     });
 
-    const controlarTeclado = (evento) => {
-        if (evento.key === "Enter") {
-            evento.preventDefault();
-            guardar();
-        }
+    acciones.append(botonGuardarCambios, botonCancelar);
+    tarjeta.append(campoNombreEdicion.contenedor, campoEmailEdicion.contenedor, acciones);
 
-        if (evento.key === "Escape") {
-            evento.preventDefault();
-            idUsuarioEnEdicion = null;
-            cargarUsuarios();
-            mostrarMensajeFormulario("Edición cancelada.", false);
-        }
-    };
-
-    inputNombre.addEventListener("keydown", controlarTeclado);
-    inputEmail.addEventListener("keydown", controlarTeclado);
-
-    celdaNombre.appendChild(inputNombre);
-    celdaEmail.appendChild(inputEmail);
-    contenedorAcciones.appendChild(botonGuardarCambios);
-    contenedorAcciones.appendChild(botonCancelar);
-    celdaAcciones.appendChild(contenedorAcciones);
-
-    inputNombre.focus();
-    inputNombre.select();
+    campoNombreEdicion.input.focus();
+    campoNombreEdicion.input.select();
 }
 
-async function actualizarUsuario(
-    id,
-    nombre,
-    email,
-    botonGuardarCambios,
-    botonCancelar
-) {
-    botonGuardarCambios.disabled = true;
-    botonCancelar.disabled = true;
-    botonGuardarCambios.textContent = "Guardando...";
+function cancelarEdicion() {
+    idUsuarioEnEdicion = null;
+    aplicarFiltro();
+    mostrarMensajeFormulario("Edición cancelada.", false);
+}
 
+async function actualizarUsuario(id, nombre, email, botonGuardarCambios, botonCancelar) {
+    cambiarEstadoBoton(botonGuardarCambios, true, "Guardando...");
+    botonCancelar.disabled = true;
     mostrarMensajeFormulario("Guardando cambios...", false);
 
     try {
-        const respuesta = await fetch(`${API_URL}/${id}`, {
+        await solicitar(`${API_URL}/${id}`, {
             method: "PUT",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nombre, email })
         });
-
-        if (!respuesta.ok) {
-            throw new Error(
-                `El servidor respondió con el código ${respuesta.status}`
-            );
-        }
 
         idUsuarioEnEdicion = null;
         mostrarMensajeFormulario("Usuario actualizado correctamente.", false);
@@ -284,109 +261,121 @@ async function actualizarUsuario(
     } catch (error) {
         console.error("Error al actualizar usuario:", error);
         mostrarMensajeFormulario("No se pudieron guardar los cambios.", true);
-
-        botonGuardarCambios.disabled = false;
+        cambiarEstadoBoton(botonGuardarCambios, false, "Guardar");
         botonCancelar.disabled = false;
-        botonGuardarCambios.textContent = "Guardar";
     }
 }
 
-function aplicarFiltro(){const b=document.getElementById('buscar');const t=(b?.value||'').toLowerCase();const f=todosLosUsuarios.filter(u=>(u.nombre||'').toLowerCase().includes(t)||(u.email||'').toLowerCase().includes(t));mostrarUsuarios(f,todosLosUsuarios.length);}
+async function eliminarUsuario(usuario, botonEliminar) {
+    const nombre = usuario.nombre || "este usuario";
+    const confirmado = window.confirm(`¿Seguro que deseas eliminar a "${nombre}"?`);
 
-function mostrarUsuarios(usuarios,total=todosLosUsuarios.length){
-    tablaUsuarios.innerHTML = "";
-
-    if (usuarios.length === 0) {
-        mostrarEstadoTabla(total===0?"Todavía no hay usuarios registrados.":"No se encontraron usuarios.");
-        contadorUsuarios.textContent = "0 usuarios";
+    if (!confirmado) {
         return;
     }
 
-    usuarios.forEach((usuario) => {
-        const fila = document.createElement("tr");
+    cambiarEstadoBoton(botonEliminar, true, "Eliminando...");
+    mostrarMensajeFormulario(`Eliminando a ${nombre}...`, false);
 
-        const celdaId = document.createElement("td");
-        celdaId.textContent = usuario.id;
-
-        const celdaNombre = document.createElement("td");
-        celdaNombre.textContent = usuario.nombre;
-
-        const celdaEmail = document.createElement("td");
-        celdaEmail.textContent = usuario.email;
-
-        const celdaAcciones = document.createElement("td");
-        const contenedorAcciones = document.createElement("div");
-        contenedorAcciones.className = "acciones";
-
-        const botonEditar = document.createElement("button");
-        botonEditar.type = "button";
-        botonEditar.className = "boton-editar";
-        botonEditar.textContent = "Editar";
-
-        const botonEliminar = document.createElement("button");
-        botonEliminar.type = "button";
-        botonEliminar.className = "boton-eliminar";
-        botonEliminar.textContent = "Eliminar";
-
-        botonEditar.addEventListener("click", () => {
-            activarEdicion(usuario, fila);
-        });
-
-        botonEliminar.addEventListener("click", () => {
-            eliminarUsuario(usuario, botonEliminar);
-        });
-
-        contenedorAcciones.appendChild(botonEditar);
-        contenedorAcciones.appendChild(botonEliminar);
-        celdaAcciones.appendChild(contenedorAcciones);
-
-        fila.appendChild(celdaId);
-        fila.appendChild(celdaNombre);
-        fila.appendChild(celdaEmail);
-        fila.appendChild(celdaAcciones);
-
-        tablaUsuarios.appendChild(fila);
-    });
-
-    contadorUsuarios.textContent =
-        usuarios.length === 1
-            ? `1 de ${total} usuario`
-            : `${usuarios.length} de ${total} usuarios`;
+    try {
+        await solicitar(`${API_URL}/${usuario.id}`, { method: "DELETE" });
+        mostrarMensajeFormulario(`Usuario "${nombre}" eliminado correctamente.`, false);
+        await cargarUsuarios();
+    } catch (error) {
+        console.error("Error al eliminar usuario:", error);
+        mostrarMensajeFormulario(`No se pudo eliminar al usuario "${nombre}".`, true);
+        cambiarEstadoBoton(botonEliminar, false, "Eliminar");
+    }
 }
 
-function mostrarEstadoTabla(mensaje) {
-    tablaUsuarios.innerHTML = `
-        <tr>
-            <td colspan="4" class="estado-tabla">
-                ${escaparHTML(mensaje)}
-            </td>
-        </tr>
-    `;
+async function solicitar(url, opciones = {}) {
+    const respuesta = await fetch(url, opciones);
+
+    if (!respuesta.ok) {
+        throw new Error(`El servidor respondió con el código ${respuesta.status}`);
+    }
+
+    return respuesta;
+}
+
+function validarDatos(nombre, email) {
+    if (!nombre || !email) {
+        mostrarMensajeFormulario("Completa el nombre y el correo electrónico.", true);
+        return false;
+    }
+
+    if (!emailValido(email)) {
+        mostrarMensajeFormulario("Introduce un correo electrónico válido.", true);
+        return false;
+    }
+
+    return true;
+}
+
+function crearCampoEdicion(etiqueta, tipo, valor, descripcion) {
+    const contenedor = document.createElement("label");
+    contenedor.className = "campo campo-edicion-contenedor";
+
+    const texto = document.createElement("span");
+    texto.textContent = etiqueta;
+
+    const input = document.createElement("input");
+    input.type = tipo;
+    input.value = valor;
+    input.className = "campo-edicion";
+    input.setAttribute("aria-label", descripcion);
+
+    contenedor.append(texto, input);
+    return { contenedor, input };
+}
+
+function crearBoton(texto, clase) {
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.className = clase;
+    boton.textContent = texto;
+    return boton;
+}
+
+function mostrarEstado(mensaje) {
+    contenedorUsuarios.replaceChildren();
+
+    const estado = document.createElement("p");
+    estado.className = "estado-tabla estado-usuarios";
+    estado.textContent = mensaje;
+
+    contenedorUsuarios.appendChild(estado);
 }
 
 function mostrarMensajeFormulario(mensaje, esError) {
     mensajeFormulario.textContent = mensaje;
-
     mensajeFormulario.classList.toggle("mensaje-error", esError);
     mensajeFormulario.classList.toggle("mensaje-exito", !esError);
+}
+
+function cambiarEstadoBoton(boton, desactivado, texto) {
+    boton.disabled = desactivado;
+    boton.textContent = texto;
 }
 
 function emailValido(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function escaparHTML(texto) {
-    const elemento = document.createElement("div");
-    elemento.textContent = texto ?? "";
-    return elemento.innerHTML;
+function normalizar(valor) {
+    return String(valor ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+function pluralizar(cantidad, singular, plural) {
+    return cantidad === 1 ? singular : plural;
 }
 
 botonRecargar.addEventListener("click", cargarUsuarios);
 formularioUsuario.addEventListener("submit", guardarUsuario);
-
-const cajaBusqueda = document.getElementById("buscar");
-if (cajaBusqueda) {
-    cajaBusqueda.addEventListener("input", aplicarFiltro);
-}
+cajaBusqueda?.addEventListener("input", aplicarFiltro);
 
 cargarUsuarios();
