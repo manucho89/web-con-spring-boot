@@ -13,16 +13,20 @@ const botonRecargar = document.getElementById("boton-recargar");
 const cajaBusqueda = document.getElementById("buscar");
 const estadoApiTexto = document.getElementById("estado-api-texto");
 
+const TARJETAS_POR_PAGINA = 10;
+
 let todosLosUsuarios = [];
 let idUsuarioEnEdicion = null;
+let paginaActual = 1;
 
 const contenedorUsuarios = document.getElementById("lista-usuarios");
+const contenedorPaginacion = document.getElementById("paginacion");
 
 if (!contenedorUsuarios) {
     throw new Error("No se encontró el contenedor #lista-usuarios en index.html");
 }
 
-async function cargarUsuarios() {
+async function cargarUsuarios({ resetearPagina = true } = {}) {
     mostrarEstado("Cargando usuarios...");
     contadorUsuarios.textContent = "Cargando usuarios...";
     botonRecargar.disabled = true;
@@ -40,7 +44,7 @@ async function cargarUsuarios() {
         todosLosUsuarios = Array.isArray(datos) ? datos : [];
         if (estadoApiTexto) estadoApiTexto.textContent = `API conectada: ${API_URL}`;
         idUsuarioEnEdicion = null;
-        aplicarFiltro();
+        aplicarFiltro({ resetearPagina });
     } catch (error) {
         console.error("Error al cargar usuarios:", error);
         mostrarEstado(
@@ -85,7 +89,11 @@ async function guardarUsuario(evento) {
     }
 }
 
-function aplicarFiltro() {
+function aplicarFiltro({ resetearPagina = false } = {}) {
+    if (resetearPagina) {
+        paginaActual = 1;
+    }
+
     const texto = normalizar(cajaBusqueda?.value);
 
     const usuariosFiltrados = todosLosUsuarios.filter((usuario) => {
@@ -107,12 +115,20 @@ function mostrarUsuarios(usuarios, total, filtroActivo) {
                 : "No se encontraron usuarios con esa búsqueda."
         );
         contadorUsuarios.textContent = total === 0 ? "0 usuarios" : `0 de ${total} usuarios`;
+        renderizarPaginacion(0, 1);
         return;
     }
 
+    const totalPaginas = Math.max(1, Math.ceil(usuarios.length / TARJETAS_POR_PAGINA));
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+    if (paginaActual < 1) paginaActual = 1;
+
+    const inicio = (paginaActual - 1) * TARJETAS_POR_PAGINA;
+    const usuariosPagina = usuarios.slice(inicio, inicio + TARJETAS_POR_PAGINA);
+
     const fragmento = document.createDocumentFragment();
 
-    usuarios.forEach((usuario) => {
+    usuariosPagina.forEach((usuario) => {
         fragmento.appendChild(crearTarjetaUsuario(usuario));
     });
 
@@ -123,6 +139,38 @@ function mostrarUsuarios(usuarios, total, filtroActivo) {
     } else {
         contadorUsuarios.textContent = `${total} ${pluralizar(total, "usuario", "usuarios")}`;
     }
+
+    renderizarPaginacion(usuarios.length, totalPaginas);
+}
+
+function renderizarPaginacion(totalFiltrados, totalPaginas) {
+    if (!contenedorPaginacion) return;
+
+    contenedorPaginacion.replaceChildren();
+
+    if (totalFiltrados <= TARJETAS_POR_PAGINA) {
+        return;
+    }
+
+    const botonAnterior = crearBoton("‹ Anterior", "boton-secundario boton-paginacion");
+    botonAnterior.disabled = paginaActual <= 1;
+    botonAnterior.addEventListener("click", () => cambiarPagina(paginaActual - 1));
+
+    const indicador = document.createElement("span");
+    indicador.className = "paginacion-indicador";
+    indicador.textContent = `Página ${paginaActual} de ${totalPaginas}`;
+
+    const botonSiguiente = crearBoton("Siguiente ›", "boton-secundario boton-paginacion");
+    botonSiguiente.disabled = paginaActual >= totalPaginas;
+    botonSiguiente.addEventListener("click", () => cambiarPagina(paginaActual + 1));
+
+    contenedorPaginacion.append(botonAnterior, indicador, botonSiguiente);
+}
+
+function cambiarPagina(nuevaPagina) {
+    paginaActual = nuevaPagina;
+    aplicarFiltro();
+    contenedorUsuarios.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function crearTarjetaUsuario(usuario) {
@@ -257,7 +305,7 @@ async function actualizarUsuario(id, nombre, email, botonGuardarCambios, botonCa
 
         idUsuarioEnEdicion = null;
         mostrarMensajeFormulario("Usuario actualizado correctamente.", false);
-        await cargarUsuarios();
+        await cargarUsuarios({ resetearPagina: false });
     } catch (error) {
         console.error("Error al actualizar usuario:", error);
         mostrarMensajeFormulario("No se pudieron guardar los cambios.", true);
@@ -280,7 +328,7 @@ async function eliminarUsuario(usuario, botonEliminar) {
     try {
         await solicitar(`${API_URL}/${usuario.id}`, { method: "DELETE" });
         mostrarMensajeFormulario(`Usuario "${nombre}" eliminado correctamente.`, false);
-        await cargarUsuarios();
+        await cargarUsuarios({ resetearPagina: false });
     } catch (error) {
         console.error("Error al eliminar usuario:", error);
         mostrarMensajeFormulario(`No se pudo eliminar al usuario "${nombre}".`, true);
@@ -376,6 +424,6 @@ function pluralizar(cantidad, singular, plural) {
 
 botonRecargar.addEventListener("click", cargarUsuarios);
 formularioUsuario.addEventListener("submit", guardarUsuario);
-cajaBusqueda?.addEventListener("input", aplicarFiltro);
+cajaBusqueda?.addEventListener("input", () => aplicarFiltro({ resetearPagina: true }));
 
 cargarUsuarios();
